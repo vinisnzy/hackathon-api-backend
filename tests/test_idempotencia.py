@@ -8,11 +8,11 @@ comum, nao a excecao. Sem idempotencia a frota inteira contabiliza o dobro.
 from sqlalchemy import func, select
 
 from app.models import Viagem
-from tests.conftest import cabecalho, lote
+from tests.conftest import lote
 
 
 def test_primeiro_envio_cria_a_viagem(client, carro):
-    r = client.post("/api/viagens", json=lote(), headers=cabecalho())
+    r = client.post("/api/viagens", json=lote())
     assert r.status_code == 201, r.text
 
     corpo = r.json()
@@ -24,10 +24,10 @@ def test_primeiro_envio_cria_a_viagem(client, carro):
 
 
 def test_reenvio_devolve_200_duplicada_sem_gravar(client, carro, db):
-    primeira = client.post("/api/viagens", json=lote(), headers=cabecalho())
+    primeira = client.post("/api/viagens", json=lote())
     assert primeira.status_code == 201
 
-    segunda = client.post("/api/viagens", json=lote(), headers=cabecalho())
+    segunda = client.post("/api/viagens", json=lote())
     assert segunda.status_code == 200
     assert segunda.json() == {"ok": True, "lote_id": "a3f1c9", "duplicada": True}
 
@@ -39,7 +39,7 @@ def test_reenvio_devolve_200_duplicada_sem_gravar(client, carro, db):
 
 def test_reenvio_nao_altera_a_quilometragem_gravada(client, carro, db):
     """km_gps e congelado: o reenvio nao pode recalcular nem sobrescrever."""
-    client.post("/api/viagens", json=lote(), headers=cabecalho())
+    client.post("/api/viagens", json=lote())
     km_original = db.execute(select(Viagem.km_gps)).scalar_one()
 
     # Mesmo loteId, mas com uma posicao a mais: o dado novo e ignorado.
@@ -55,7 +55,7 @@ def test_reenvio_nao_altera_a_quilometragem_gravada(client, carro, db):
             "fixValido": True,
         }
     )
-    r = client.post("/api/viagens", json=corpo, headers=cabecalho())
+    r = client.post("/api/viagens", json=corpo)
     assert r.status_code == 200
     assert r.json()["duplicada"] is True
 
@@ -65,10 +65,10 @@ def test_reenvio_nao_altera_a_quilometragem_gravada(client, carro, db):
 
 def test_lotes_diferentes_do_mesmo_carro_convivem(client, carro, db):
     assert client.post(
-        "/api/viagens", json=lote(lote_id="aaa111"), headers=cabecalho()
+        "/api/viagens", json=lote(lote_id="aaa111")
     ).status_code == 201
     assert client.post(
-        "/api/viagens", json=lote(lote_id="bbb222"), headers=cabecalho()
+        "/api/viagens", json=lote(lote_id="bbb222")
     ).status_code == 201
 
     total = db.execute(select(func.count()).select_from(Viagem)).scalar_one()
@@ -95,12 +95,12 @@ def test_a_constraint_e_por_carro(client, carro, db):
     db.flush()
 
     assert client.post(
-        "/api/viagens", json=lote(lote_id="mesmo"), headers=cabecalho()
+        "/api/viagens", json=lote(lote_id="mesmo")
     ).status_code == 201
     assert client.post(
         "/api/viagens",
         json=lote(dispositivo="esp32-0158", lote_id="mesmo"),
-        headers=cabecalho(),
+
     ).status_code == 201
 
     assert db.execute(select(func.count()).select_from(Viagem)).scalar_one() == 2

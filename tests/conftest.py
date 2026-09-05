@@ -13,7 +13,6 @@ import os
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+psycopg://frota:frota@127.0.0.1:5432/frota_test"
 )
-os.environ.setdefault("DEVICE_TOKEN", "token-de-teste")
 
 import datetime as dt  # noqa: E402
 import uuid  # noqa: E402
@@ -29,9 +28,6 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.core.database import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Carro, Secretaria  # noqa: E402
-
-TOKEN = os.environ["DEVICE_TOKEN"]
-
 
 @pytest.fixture(scope="session", autouse=True)
 def schema() -> None:
@@ -87,10 +83,6 @@ def carro(db: Session) -> Carro:
     db.add(c)
     db.flush()
     return c
-
-
-def cabecalho(token: str = TOKEN) -> dict[str, str]:
-    return {"X-Device-Token": token}
 
 
 def posicao(

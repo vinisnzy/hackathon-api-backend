@@ -5,13 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.orm.exc import DetachedInstanceError
 
 from app.models import Viagem
-from tests.conftest import cabecalho, lote
+from tests.conftest import lote
 
 
 def _cria(client, lote_id="a3f1c9", dispositivo="esp32-0157") -> str:
     r = client.post(
         "/api/viagens", json=lote(dispositivo=dispositivo, lote_id=lote_id),
-        headers=cabecalho(),
+
     )
     assert r.status_code == 201, r.text
     return r.json()["viagem_id"]

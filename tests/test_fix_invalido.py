@@ -12,11 +12,11 @@ from sqlalchemy import select
 
 from app.models import Viagem
 from app.services.geo import km_da_rota
-from tests.conftest import cabecalho, lote, posicao
+from tests.conftest import lote, posicao
 
 
 def test_ponto_sem_fix_nao_entra_na_quilometragem(client, carro, db):
-    r = client.post("/api/viagens", json=lote(), headers=cabecalho())
+    r = client.post("/api/viagens", json=lote())
     assert r.status_code == 201
 
     corpo = r.json()
@@ -32,7 +32,7 @@ def test_ponto_sem_fix_nao_entra_na_quilometragem(client, carro, db):
 
 def test_rota_bruta_preserva_o_ponto_descartado(client, carro, db):
     """O descarte e do calculo, nao do registro."""
-    client.post("/api/viagens", json=lote(), headers=cabecalho())
+    client.post("/api/viagens", json=lote())
 
     viagem = db.execute(select(Viagem)).scalar_one()
     rota = db.execute(select(Viagem.rota)).scalar_one()
@@ -49,7 +49,7 @@ def test_rota_bruta_preserva_o_ponto_descartado(client, carro, db):
 
 def test_inicio_e_fim_ignoram_o_ponto_sem_fix(client, carro, db):
     """A posicao invalida e a ULTIMA do lote: se contasse, "fim" seria ela."""
-    client.post("/api/viagens", json=lote(), headers=cabecalho())
+    client.post("/api/viagens", json=lote())
     viagem = db.execute(select(Viagem)).scalar_one()
 
     assert viagem.inicio.isoformat() == "2026-09-05T08:12:04+00:00"
@@ -69,7 +69,7 @@ def test_lote_inteiro_sem_fix_e_rejeitado(client, carro):
         posicao("2026-09-05T08:12:04Z", 0.0, 0.0, fix=False),
         posicao("2026-09-05T08:12:14Z", 0.0, 0.0, fix=False),
     ]
-    r = client.post("/api/viagens", json=corpo, headers=cabecalho())
+    r = client.post("/api/viagens", json=corpo)
     assert r.status_code == 422
     assert r.json()["ok"] is False
     assert "fixValido" in r.json()["erro"]
@@ -82,7 +82,7 @@ def test_quilometragem_e_reproduzivel_a_partir_da_rota_gravada(client, carro, db
     gravados ja arredondados. Se o calculo usasse o valor cru e o banco
     guardasse o arredondado, um auditor chegaria a outro numero.
     """
-    client.post("/api/viagens", json=lote(), headers=cabecalho())
+    client.post("/api/viagens", json=lote())
 
     viagem = db.execute(select(Viagem)).scalar_one()
     rota = db.execute(select(Viagem.rota)).scalar_one()

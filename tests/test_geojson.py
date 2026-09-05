@@ -5,11 +5,11 @@ das coordenadas: GeoJSON e [longitude, latitude], nao [lat, lon]. Trocar
 coloca Cascavel na Antartida, e o mapa "quase funciona" -- o pior tipo de bug.
 """
 
-from tests.conftest import cabecalho, lote, posicao
+from tests.conftest import lote, posicao
 
 
 def _cria(client) -> str:
-    r = client.post("/api/viagens", json=lote(), headers=cabecalho())
+    r = client.post("/api/viagens", json=lote())
     assert r.status_code == 201, r.text
     return r.json()["viagem_id"]
 
@@ -98,7 +98,7 @@ def test_linestring_com_um_ponto_valido_repete_a_coordenada(client, carro):
     """
     corpo = lote()
     corpo["posicoes"] = [posicao("2026-09-05T08:12:04Z", -24.9555, -53.4552)]
-    viagem_id = client.post("/api/viagens", json=corpo, headers=cabecalho()).json()[
+    viagem_id = client.post("/api/viagens", json=corpo).json()[
         "viagem_id"
     ]
 
@@ -109,8 +109,8 @@ def test_linestring_com_um_ponto_valido_repete_a_coordenada(client, carro):
 
 
 def test_colecao_com_varias_viagens(client, carro):
-    client.post("/api/viagens", json=lote(lote_id="l1"), headers=cabecalho())
-    client.post("/api/viagens", json=lote(lote_id="l2"), headers=cabecalho())
+    client.post("/api/viagens", json=lote(lote_id="l1"))
+    client.post("/api/viagens", json=lote(lote_id="l2"))
 
     fc = client.get("/api/viagens/geojson").json()
     assert fc["type"] == "FeatureCollection"
@@ -133,11 +133,11 @@ def test_geojson_filtra_por_carro(client, carro, db):
     db.add(outro)
     db.flush()
 
-    client.post("/api/viagens", json=lote(lote_id="l1"), headers=cabecalho())
+    client.post("/api/viagens", json=lote(lote_id="l1"))
     client.post(
         "/api/viagens",
         json=lote(dispositivo="esp32-0158", lote_id="l2"),
-        headers=cabecalho(),
+
     )
 
     fc = client.get(f"/api/viagens/geojson?carro_id={carro.id}").json()

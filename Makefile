@@ -9,7 +9,7 @@ migrate:
 
 test:
 	DATABASE_URL=postgresql+psycopg://frota:frota@127.0.0.1:5432/frota_test \
-	DEVICE_TOKEN=token-de-teste .venv/bin/pytest -q
+	.venv/bin/pytest -q
 
 run:
 	.venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

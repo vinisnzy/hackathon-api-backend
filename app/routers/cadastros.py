@@ -1,8 +1,7 @@
 """CRUD de secretaria, servidor e carro.
 
-Sem token: autenticacao de usuario do frontend esta fora de escopo. A unica
-concessao a privacidade e o CPF, que nao aparece na listagem (ver
-ServidorListItem).
+A API nao tem autenticacao (MVP de hackathon). A unica concessao a privacidade
+e o CPF, que nao aparece na listagem (ver ServidorListItem).
 """
 
 import uuid

@@ -31,9 +31,9 @@ def test_apagar_secretaria_com_carro_e_409(client, carro):
 
 
 def test_apagar_carro_com_viagem_e_409(client, carro):
-    from tests.conftest import cabecalho, lote
+    from tests.conftest import lote
 
-    client.post("/api/viagens", json=lote(), headers=cabecalho())
+    client.post("/api/viagens", json=lote())
     r = client.delete(f"/api/carros/{carro.id}")
     assert r.status_code == 409
 

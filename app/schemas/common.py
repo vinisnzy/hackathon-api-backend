@@ -18,7 +18,7 @@ class Page(BaseModel, Generic[T]):
 class Erro(BaseModel):
     """Envelope unico de erro.
 
-    O dispositivo decide pelo campo "ok". O 401/404/422 padrao do FastAPI
+    O dispositivo decide pelo campo "ok". O 404/422 padrao do FastAPI
     devolve {"detail": ...}, sem "ok" -- o firmware teria dois caminhos de
     parse. Todos os erros da API passam a ter este formato.
     """

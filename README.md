@@ -47,7 +47,7 @@ futuro sem tornar o histórico inexplicável.
 ### Docker
 
 ```bash
-cp .env.example .env      # defina DEVICE_TOKEN
+cp .env.example .env
 docker compose up --build
 ```
 
@@ -60,7 +60,7 @@ uvicorn tentar migrar em paralelo.
 ```bash
 make install                       # cria .venv e instala
 createdb frota && createdb frota_test
-cp .env.example .env               # ajuste DATABASE_URL e DEVICE_TOKEN
+cp .env.example .env               # ajuste DATABASE_URL
 make migrate
 make run                           # http://localhost:8000/docs
 ```
@@ -82,8 +82,12 @@ deriva em nome de constraint, `server_default` e índice.
 
 ```http
 POST /api/viagens
-X-Device-Token: <DEVICE_TOKEN>
 ```
+
+> **A API nao tem autenticacao.** E um MVP de hackathon: qualquer um que
+> alcance a rede pode gravar viagens e ler os cadastros. Antes de ir para
+> producao isso precisa mudar -- a ingestao e o unico endpoint que escreve
+> quilometragem usada em prestacao de contas.
 
 ```json
 {
@@ -106,17 +110,11 @@ X-Device-Token: <DEVICE_TOKEN>
 |---|---|---|
 | **201** | `{"ok": true, "viagem_id": "...", "lote_id": "a3f1c9", "pontos_recebidos": 3, "pontos_validos": 2, "km_gps": 0.2}` | Apaga o SD |
 | **200** | `{"ok": true, "lote_id": "a3f1c9", "duplicada": true}` | Apaga o SD (já estava gravado) |
-| **401** | `{"ok": false, "erro": "..."}` | Mantém e reenvia |
 | **404** | `{"ok": false, "erro": "..."}` | Mantém e reenvia |
 | **422** | `{"ok": false, "erro": "...", "detalhes": [...]}` | Mantém e reenvia |
 
 Todo erro carrega o campo `ok`. O padrão do FastAPI seria `{"detail": ...}`, sem
 `ok` — o firmware teria dois caminhos de parse.
-
-O `X-Device-Token` é conferido em **middleware ASGI, antes do roteamento**. Um
-dispositivo não autenticado não faz o servidor bufferizar um dump de cartão SD
-inteiro, e um token errado responde 401 mesmo quando o corpo também está
-quebrado.
 
 ### Validações que devolvem 422
 
@@ -188,9 +186,9 @@ fix da ingestão: o mapa desenha exatamente o conjunto de pontos que produziu o
 A coluna `rota` é `deferred_raiseload`: acesso acidental levanta erro em vez de
 emitir um `SELECT` por linha, então o JSONB nunca vaza para a listagem.
 
-`GET /api/servidores` não retorna CPF. Um endpoint aberto que publica CPF de
-servidor municipal é exposição de dado pessoal — "autenticação de frontend fora
-de escopo" não cobre isso.
+`GET /api/servidores` não retorna CPF. Como a API é aberta, um endpoint que
+publicasse CPF de servidor municipal exporia dado pessoal a quem alcançasse a
+rede. O detalhe individual (`GET /api/servidores/{id}`) ainda retorna.
 
 ---
 
@@ -198,7 +196,7 @@ de escopo" não cobre isso.
 
 ```
 app/
-  core/        config, database, security (middleware do token), errors
+  core/        config, database, errors
   models/      SQLAlchemy 2.0 declarativo
   schemas/     Pydantic v2: lote (entrada), geojson (saída), viagem, cadastro
   repositories/  acesso a dados, sem regra de negócio
@@ -223,4 +221,3 @@ Alembic · psycopg 3 (síncrono) · PostgreSQL 16 · pytest.
 | Variável | Descrição |
 |---|---|
 | `DATABASE_URL` | `postgresql+psycopg://user:pass@host:5432/db` |
-| `DEVICE_TOKEN` | Token compartilhado com os ESP32. **A aplicação não sobe se estiver vazio** — token vazio casaria com header vazio |

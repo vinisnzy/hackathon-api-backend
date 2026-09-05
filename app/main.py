@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.errors import ErroDominio
-from app.core.security import DeviceTokenMiddleware
 from app.routers import cadastros, health, viagens
 
 settings = get_settings()
@@ -20,17 +19,10 @@ app = FastAPI(
     ),
 )
 
-# Antes do roteamento: um dispositivo sem token nao chega a ter seu corpo lido.
-app.add_middleware(
-    DeviceTokenMiddleware,
-    token=settings.device_token,
-    prefixos=("/api/viagens", "/api/viagens/"),
-)
 
-
-# O dispositivo decide pelo campo "ok". Sem estes handlers, 401/404/422 sairiam
-# no formato {"detail": ...} do FastAPI e o firmware teria dois caminhos de
-# parse -- um para sucesso e outro para erro.
+# O dispositivo decide pelo campo "ok". Sem estes handlers, 404/422 sairiam no
+# formato {"detail": ...} do FastAPI e o firmware teria dois caminhos de parse
+# -- um para sucesso e outro para erro.
 
 
 @app.exception_handler(ErroDominio)
