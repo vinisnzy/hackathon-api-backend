@@ -1,0 +1,36 @@
+[project]
+name = "frota-telemetria-api"
+version = "1.0.0"
+description = "API de telemetria de frota municipal: ingestao de lotes GPS gravados offline por ESP32"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.13",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Deprecacao dentro do nosso codigo e erro; de biblioteca de terceiro, nao --
+# senao um alias deprecado no anyio derruba a suite inteira no import.
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "error::DeprecationWarning:app",
+]
