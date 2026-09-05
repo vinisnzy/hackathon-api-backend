@@ -10,16 +10,56 @@ from app.models import Viagem
 from tests.conftest import lote, posicao
 
 
-def test_dispositivo_desconhecido_devolve_404_e_nao_cria_carro(client, carro, db):
+def test_dispositivo_novo_e_cadastrado_na_hora(client, carro, db):
+    """Sem cadastro previo: o lote nunca e recusado por falta de carro.
+
+    O dispositivo e a fonte da identidade. Um lote que chegasse de um ESP32
+    ainda nao cadastrado seria reenviado para sempre, e a viagem se perderia.
+    """
     from app.models import Carro
 
     antes = db.execute(select(func.count()).select_from(Carro)).scalar_one()
     r = client.post(
-        "/api/viagens", json=lote(dispositivo="esp32-fantasma")
+        "/api/viagens", json=lote(dispositivo="esp32-9999", lote_id="novo")
     )
-    assert r.status_code == 404
-    assert r.json()["ok"] is False
-    assert db.execute(select(func.count()).select_from(Carro)).scalar_one() == antes
+    assert r.status_code == 201, r.text
+    assert db.execute(select(func.count()).select_from(Carro)).scalar_one() == antes + 1
+
+    novo = db.execute(
+        select(Carro).where(Carro.dispositivo_id == "esp32-9999")
+    ).scalar_one()
+    assert novo.numero_frota == "9999"  # extraido do slug
+    assert novo.secretaria_id is not None
+
+
+def test_carro_criado_nao_duplica_no_segundo_lote(client, carro, db):
+    from app.models import Carro
+
+    client.post("/api/viagens", json=lote(dispositivo="esp32-7777", lote_id="l1"))
+    client.post("/api/viagens", json=lote(dispositivo="esp32-7777", lote_id="l2"))
+
+    carros = db.execute(
+        select(func.count()).select_from(Carro).where(
+            Carro.dispositivo_id == "esp32-7777"
+        )
+    ).scalar_one()
+    assert carros == 1
+
+
+def test_placa_ja_usada_nao_quebra_o_auto_cadastro(client, carro, db):
+    """O carro do fixture ja tem BAZ-1D23; um dispositivo novo informando a
+    mesma placa nao pode estourar o indice unico."""
+    from app.models import Carro
+
+    r = client.post(
+        "/api/viagens", json=lote(dispositivo="esp32-0002", lote_id="x1")
+    )
+    assert r.status_code == 201, r.text
+
+    novo = db.execute(
+        select(Carro).where(Carro.dispositivo_id == "esp32-0002")
+    ).scalar_one()
+    assert novo.placa == "esp32-0002"  # caiu para o id do dispositivo
 
 
 def test_erro_sempre_traz_o_campo_ok(client, carro):
@@ -29,7 +69,6 @@ def test_erro_sempre_traz_o_campo_ok(client, carro):
     dispositivo teria de tratar dois formatos.
     """
     respostas = [
-        client.post("/api/viagens", json=lote(dispositivo="nao-existe")),
         client.post("/api/viagens", json={}),
         client.get("/api/viagens/00000000-0000-0000-0000-000000000000"),
     ]

@@ -6,12 +6,14 @@ que nao seja 200/201 significa "o dado continua no carro e volta depois".
 """
 
 import datetime as dt
+import re
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import DispositivoNaoCadastrado, LoteSemFixValido
-from app.models import Carro
+from app.core.errors import LoteSemFixValido
+from app.models import Carro, Secretaria
 from app.repositories import cadastro as repo_cadastro
 from app.repositories import viagem as repo_viagem
 from app.schemas.lote import LoteIn, PosicaoIn
@@ -31,18 +33,75 @@ def _posicoes_validas(posicoes: list[PosicaoIn]) -> list[PosicaoIn]:
     return [p for p in posicoes if p.fix_valido]
 
 
+SECRETARIA_PADRAO = "Nao informada"
+
+
+def _numero_de_frota(dispositivo_id: str) -> str:
+    """Extrai o numero do slug do dispositivo: "esp32-0157" -> "0157"."""
+    digitos = re.findall(r"\d+", dispositivo_id)
+    return digitos[-1] if digitos else dispositivo_id[:30]
+
+
+def _secretaria_padrao(db: Session) -> Secretaria:
+    """Secretaria coringa para os carros criados automaticamente."""
+    existente = db.execute(
+        select(Secretaria).where(Secretaria.nome == SECRETARIA_PADRAO)
+    ).scalar_one_or_none()
+    if existente is not None:
+        return existente
+    nova = Secretaria(nome=SECRETARIA_PADRAO)
+    db.add(nova)
+    db.flush()
+    return nova
+
+
+def _placa_livre(db: Session, candidata: str | None, dispositivo_id: str) -> str:
+    """Placa para o carro novo, sem colidir com o indice unico.
+
+    Usa a que o dispositivo informou; se ela ja pertence a outro carro, cai
+    para o proprio id do dispositivo, que e unico por definicao.
+    """
+    if candidata:
+        candidata = candidata.strip().upper()[:10]
+        ja_existe = db.execute(
+            select(Carro.id).where(Carro.placa == candidata)
+        ).scalar_one_or_none()
+        if ja_existe is None:
+            return candidata
+    return dispositivo_id[:10]
+
+
+def _resolve_carro(db: Session, lote: LoteIn) -> Carro:
+    """Acha o carro do dispositivo, criando um se ainda nao existir.
+
+    O cadastro previo nao e exigido: o dispositivo e a fonte da identidade e
+    um lote nunca e recusado por falta de cadastro. O carro criado aqui nasce
+    com os dados que vieram no proprio lote e pode ser completado depois pelo
+    CRUD (modelo, marca, secretaria de verdade).
+    """
+    carro = repo_cadastro.busca_carro_por_dispositivo(db, lote.dispositivo_id)
+    if carro is not None:
+        return carro
+
+    carro = Carro(
+        modelo="Nao informado",
+        marca="Nao informada",
+        numero_frota=_numero_de_frota(lote.dispositivo_id),
+        placa=_placa_livre(db, lote.placa, lote.dispositivo_id),
+        dispositivo_id=lote.dispositivo_id,
+        secretaria_id=_secretaria_padrao(db).id,
+    )
+    db.add(carro)
+    db.flush()
+    return carro
+
+
 def processa_lote(db: Session, lote: LoteIn) -> tuple[ViagemAceitaOut | ViagemDuplicadaOut, bool]:
     """Executa a ingestao. Devolve (resposta, criada)."""
 
-    # 1. Resolver o dispositivo. Nunca criar carro automaticamente: um carro
-    #    fantasma entraria na prestacao de contas sem placa nem secretaria.
-    carro: Carro | None = repo_cadastro.busca_carro_por_dispositivo(
-        db, lote.dispositivo_id
-    )
-    if carro is None:
-        raise DispositivoNaoCadastrado(
-            f"dispositivo '{lote.dispositivo_id}' nao cadastrado"
-        )
+    # 1. Resolver o dispositivo, cadastrando o carro na hora se for a
+    #    primeira vez que ele aparece.
+    carro = _resolve_carro(db, lote)
 
     # 2. Idempotencia por consulta previa: o caminho comum de um reenvio nao
     #    paga o custo de um INSERT que vai falhar.

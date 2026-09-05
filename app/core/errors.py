@@ -9,10 +9,6 @@ class ErroDominio(Exception):
         self.mensagem = mensagem
 
 
-class DispositivoNaoCadastrado(ErroDominio):
-    status_code = 404
-
-
 class LoteSemFixValido(ErroDominio):
     status_code = 422
 

@@ -108,13 +108,19 @@ POST /api/viagens
 
 | Status | Corpo | O que o dispositivo faz |
 |---|---|---|
-| **201** | `{"ok": true, "viagem_id": "...", "lote_id": "a3f1c9", "pontos_recebidos": 3, "pontos_validos": 2, "km_gps": 0.2}` | Apaga o SD |
-| **200** | `{"ok": true, "lote_id": "a3f1c9", "duplicada": true}` | Apaga o SD (já estava gravado) |
-| **404** | `{"ok": false, "erro": "..."}` | Mantém e reenvia |
+| **201** | `{"ok": true, "viagem_id": "...", "lote_id": "bc9e12", "pontos_recebidos": 41, "pontos_validos": 40, "km_gps": 0.87}` | Apaga o SD |
+| **200** | `{"ok": true, "lote_id": "bc9e12", "duplicada": true}` | Apaga o SD (já estava gravado) |
 | **422** | `{"ok": false, "erro": "...", "detalhes": [...]}` | Mantém e reenvia |
 
 Todo erro carrega o campo `ok`. O padrão do FastAPI seria `{"detail": ...}`, sem
 `ok` — o firmware teria dois caminhos de parse.
+
+O `dispositivoId` **não precisa estar cadastrado**. Se for a primeira vez que
+aquele ESP32 aparece, a API cria o carro na hora, com a placa que veio no lote e
+o número de frota extraído do slug (`esp32-0157` → `0157`). Modelo, marca e
+secretaria nascem como "Não informado" e podem ser completados depois pelo CRUD.
+Exigir cadastro prévio faria o dispositivo reenviar o mesmo lote para sempre e a
+viagem se perderia.
 
 ### Validações que devolvem 422
 

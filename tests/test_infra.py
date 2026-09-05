@@ -39,4 +39,6 @@ def test_openapi_documenta_o_200_de_duplicada(client):
     """
     esquema = client.get("/openapi.json").json()
     respostas = esquema["paths"]["/api/viagens"]["post"]["responses"]
-    assert set(respostas) >= {"200", "201", "404", "422"}
+    assert set(respostas) >= {"200", "201", "422"}
+    # A ingestao nao devolve mais 404: dispositivo desconhecido vira cadastro.
+    assert "404" not in respostas

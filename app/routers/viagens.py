@@ -33,7 +33,6 @@ MAX_ROTAS_NO_MAPA = 200
     response_model=ViagemAceitaOut,
     responses={
         200: {"model": ViagemDuplicadaOut, "description": "Lote ja recebido antes"},
-        404: {"model": Erro, "description": "Dispositivo nao cadastrado"},
         422: {"model": Erro, "description": "Payload invalido"},
     },
     summary="Recebe um lote de posicoes gravado offline pelo ESP32",
